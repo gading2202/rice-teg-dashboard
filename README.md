@@ -24,3 +24,4 @@ Sistem monitoring real-time untuk pemanenan energi termoelektrik (**Thermoelectr
 ## 🚀 Live Demo Web Dashboard
 Akses web dashboard secara langsung via GitHub Pages:
 👉 **[https://gading2202.github.io/rice-teg-dashboard/](https://gading2202.github.io/rice-teg-dashboard/)**
+

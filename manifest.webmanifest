@@ -1,0 +1,21 @@
+{
+  "id": "/rice-teg-dashboard/",
+  "name": "Rice-TEG Telemetry Monitor",
+  "short_name": "RiceTEG",
+  "description": "Sistem Monitoring Real-Time Pemanenan Energi Termoelektrik (TEG)",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#090d16",
+  "theme_color": "#0f766e",
+  "categories": ["utilities", "education", "productivity"],
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "192x192 512x512 any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -2,21 +2,30 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rice-TEG IoT Monitor & Telemetry Dashboard</title>
-  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Rice-TEG Telemetry Monitor</title>
+
+  <!-- PWA Meta Tags -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="RiceTEG">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Paho MQTT WebSocket Client CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Google Fonts -->
+
+  <!-- Typography: Bricolage Grotesque (Display), Inter (Body), JetBrains Mono (Telemetry Data) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
   <script>
     tailwind.config = {
@@ -24,19 +33,18 @@
       theme: {
         extend: {
           fontFamily: {
+            display: ['"Bricolage Grotesque"', 'sans-serif'],
             sans: ['Inter', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace'],
+            mono: ['"JetBrains Mono"', 'monospace'],
           },
           colors: {
-            brand: {
-              hot: '#ff5722',
-              cold: '#00bcd4',
-              energy: '#10b981',
-              voltage: '#f59e0b',
-              current: '#8b5cf6',
-              dark: '#0f172a',
-              card: '#1e293b',
-              border: '#334155',
+            slate: {
+              850: '#131d31',
+              900: '#0f172a',
+              950: '#090d16',
+            },
+            teal: {
+              750: '#0d6b63',
             }
           }
         }
@@ -45,502 +53,591 @@
   </script>
 
   <style>
+    /* AntiSlopUI Contract: Motion and Accessibility Guardrails */
+    @media (prefers-reduced-motion: reduce) {
+      *, ::before, ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
     body {
-      background-color: #0b0f19;
-      color: #e2e8f0;
+      background-color: #090d16;
+      color: #f8fafc;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     }
-    .glass-card {
-      background: rgba(30, 41, 59, 0.7);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 1rem;
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
     }
-    .glow-hot {
-      box-shadow: 0 0 25px rgba(255, 87, 34, 0.2);
-    }
-    .glow-cold {
-      box-shadow: 0 0 25px rgba(0, 188, 212, 0.2);
-    }
-    .glow-green {
-      box-shadow: 0 0 25px rgba(16, 185, 129, 0.25);
-    }
+
+    /* Custom Scrollbar */
     .custom-scroll::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+      width: 5px;
+      height: 5px;
     }
     .custom-scroll::-webkit-scrollbar-track {
       background: #0f172a;
     }
     .custom-scroll::-webkit-scrollbar-thumb {
       background: #334155;
-      border-radius: 3px;
+      border-radius: 2px;
     }
-    @keyframes pulse-ring {
-      0% { transform: scale(0.95); opacity: 0.8; }
-      50% { transform: scale(1.15); opacity: 0.4; }
-      100% { transform: scale(0.95); opacity: 0.8; }
-    }
-    .pulse-indicator {
-      animation: pulse-ring 2s infinite ease-in-out;
+
+    /* Native Dialog Backdrop Styling */
+    dialog::backdrop {
+      background: rgba(9, 13, 22, 0.75);
+      backdrop-filter: blur(4px);
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
+<body class="min-h-screen flex flex-col font-sans selection:bg-teal-600 selection:text-white pb-16 md:pb-0">
 
   <!-- ======================================================= -->
-  <!-- HEADER -->
+  <!-- 1. OFFLINE / NETWORK STATUS BANNER -->
   <!-- ======================================================= -->
-  <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50 px-4 lg:px-8 py-3.5">
-    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+  <div id="offlineBanner" class="hidden bg-amber-900 border-b border-amber-700 px-4 py-2 text-xs text-amber-100 flex items-center justify-between">
+    <div class="flex items-center gap-2 max-w-7xl mx-auto w-full">
+      <svg class="w-4 h-4 text-amber-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+      <span>Koneksi internet terputus. Mode offline PWA aktif; data telemetri akan tersambung kembali saat online.</span>
+    </div>
+  </div>
+
+  <!-- ======================================================= -->
+  <!-- 2. SOLID HEADER (AntiSlopUI: Fixed solid with border) -->
+  <!-- ======================================================= -->
+  <header class="border-b border-slate-800 bg-slate-900 sticky top-0 z-40 px-4 lg:px-8 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
       
-      <!-- Title & Branding -->
+      <!-- Brand & Title -->
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-          <i class="fa-solid fa-bolt text-slate-950 font-bold text-lg"></i>
+        <div class="w-9 h-9 rounded-md bg-teal-800 border border-teal-600/40 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5 text-teal-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="font-bold text-lg text-white tracking-tight">RICE-TEG ENERGY MONITOR</h1>
-            <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Live IoT</span>
+            <h1 class="font-display font-bold text-base text-slate-100 tracking-tight">RICE-TEG ENERGY HARVESTING</h1>
+            <span class="text-[10px] font-mono font-medium px-2 py-0.5 rounded-md bg-teal-950 text-teal-300 border border-teal-800">PWA v2.0</span>
           </div>
-          <p class="text-xs text-slate-400">ESP32 Thermoelectric Generator Telemetry Dashboard</p>
+          <p class="text-xs text-slate-400">Thermoelectric Telemetry Monitor &middot; ESP32 &middot; HiveMQ</p>
         </div>
       </div>
 
-      <!-- Connection Status & Quick Controls -->
-      <div class="flex items-center gap-3">
-        <!-- MQTT Status Badge -->
-        <div id="statusBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs">
-          <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-amber-500 pulse-indicator"></span>
-          <span id="statusText" class="font-medium text-slate-300">Menghubungkan...</span>
+      <!-- Live Status & Action Buttons -->
+      <div class="flex items-center gap-2.5">
+        <!-- Connection Status Badge -->
+        <div id="statusBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-800 border border-slate-700 text-xs font-mono text-slate-300" role="status" aria-live="polite">
+          <span id="statusDot" class="w-2 h-2 rounded-full bg-amber-400"></span>
+          <span id="statusText">Menghubungkan...</span>
         </div>
 
-        <!-- Toggle Settings Button -->
-        <button id="btnToggleConfig" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition text-sm flex items-center gap-1.5" title="Konfigurasi MQTT">
-          <i class="fa-solid fa-sliders"></i>
-          <span class="hidden sm:inline text-xs">Pengaturan</span>
+        <!-- PWA Install Button (Appears if installable) -->
+        <button id="btnInstallPWA" class="hidden px-3 py-1.5 rounded-md bg-teal-700 hover:bg-teal-600 text-white text-xs font-medium border border-teal-500 transition-colors duration-150 flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400" aria-label="Pasang Aplikasi PWA">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          <span class="hidden sm:inline">Pasang PWA</span>
         </button>
 
         <!-- Test Simulation Button -->
-        <button id="btnSimulate" class="p-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs flex items-center gap-1.5 shadow transition" title="Uji Coba Visual Dashboard Tanpa Alat">
-          <i class="fa-solid fa-play"></i>
-          <span id="txtSimulate">Test Simulasi</span>
+        <button id="btnSimulate" class="px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition-colors duration-150 flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400" aria-label="Uji coba data simulasi">
+          <svg class="w-3.5 h-3.5 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          <span id="txtSimulate" class="hidden sm:inline">Uji Simulasi</span>
         </button>
 
-        <!-- CSV Export Button -->
-        <button id="btnExportCSV" class="p-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs flex items-center gap-1.5 shadow transition">
-          <i class="fa-solid fa-file-csv"></i>
+        <!-- Toggle Config Drawer Button -->
+        <button id="btnToggleConfig" class="px-2.5 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-colors duration-150 flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400" aria-label="Buka konfigurasi broker MQTT">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span class="hidden md:inline">Koneksi</span>
+        </button>
+
+        <!-- Export CSV Button -->
+        <button id="btnExportCSV" class="px-3 py-1.5 rounded-md bg-teal-800 hover:bg-teal-700 text-teal-100 text-xs font-semibold border border-teal-600 transition-colors duration-150 flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400" aria-label="Export riwayat telemetri ke CSV">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
           <span>Export CSV</span>
         </button>
       </div>
 
     </div>
 
-    <!-- Collapsible MQTT Settings Bar -->
-    <div id="configDrawer" class="hidden max-w-7xl mx-auto mt-4 pt-3 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+    <!-- Collapsible MQTT Settings Drawer -->
+    <div id="configDrawer" class="hidden max-w-7xl mx-auto mt-3 pt-3 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
       <div>
-        <label class="block text-slate-400 mb-1 font-medium">MQTT Broker Host</label>
-        <input type="text" id="cfgHost" value="broker.hivemq.com" class="w-full bg-slate-950 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-200 font-mono focus:border-emerald-500 focus:outline-none">
+        <label for="cfgHost" class="block text-slate-400 mb-1 font-medium">MQTT Broker Host</label>
+        <input type="text" id="cfgHost" value="broker.hivemq.com" class="w-full bg-slate-950 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-200 font-mono focus:border-teal-500 focus:outline-none">
       </div>
       <div>
-        <label class="block text-slate-400 mb-1 font-medium">WebSocket Port</label>
-        <input type="number" id="cfgPort" value="8000" class="w-full bg-slate-950 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-200 font-mono focus:border-emerald-500 focus:outline-none">
-        <span class="text-[10px] text-slate-500">8000 (ws) / 8884 (wss)</span>
+        <label for="cfgPort" class="block text-slate-400 mb-1 font-medium">WebSocket Port</label>
+        <input type="number" id="cfgPort" value="8884" class="w-full bg-slate-950 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-200 font-mono focus:border-teal-500 focus:outline-none">
+        <span class="text-[10px] text-slate-500">HTTPS butuh 8884 (WSS) / HTTP lokal 8000 (WS)</span>
       </div>
       <div>
-        <label class="block text-slate-400 mb-1 font-medium">Topic Telemetri</label>
-        <input type="text" id="cfgTopic" value="rice_teg/kelompok/telemetry" class="w-full bg-slate-950 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-200 font-mono focus:border-emerald-500 focus:outline-none">
+        <label for="cfgTopic" class="block text-slate-400 mb-1 font-medium">Topic Telemetri</label>
+        <input type="text" id="cfgTopic" value="rice_teg/kelompok/telemetry" class="w-full bg-slate-950 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-200 font-mono focus:border-teal-500 focus:outline-none">
       </div>
       <div class="flex items-end gap-2">
-        <button id="btnApplyConfig" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-1.5 px-3 rounded-md transition">
-          Hubungkan Ulang
+        <button id="btnApplyConfig" class="w-full bg-teal-700 hover:bg-teal-600 text-white font-semibold py-1.5 px-3 rounded-md transition-colors duration-150">
+          Terapkan & Sambung Ulang
         </button>
       </div>
     </div>
   </header>
 
   <!-- ======================================================= -->
-  <!-- MAIN CONTENT CONTAINER -->
+  <!-- 3. MAIN WORKSPACE CONTENT -->
   <!-- ======================================================= -->
-  <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 space-y-6">
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 space-y-5">
 
-    <!-- HARDWARE PINOUT NOTIFICATION & SYNC CARD -->
-    <div class="glass-card p-4 border-l-4 border-l-indigo-500 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-      <div class="flex items-center gap-3.5">
-        <div class="w-9 h-9 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0 text-base">
-          <i class="fa-solid fa-microchip"></i>
+    <!-- HARDWARE SYNC NOTIFICATION BANNER -->
+    <section aria-labelledby="hw-heading" class="bg-slate-900 border border-slate-800 rounded-lg p-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-md bg-teal-900/60 border border-teal-700/50 text-teal-300 flex items-center justify-center shrink-0">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <rect x="4" y="4" width="16" height="16" rx="2" stroke-width="2"/>
+            <rect x="9" y="9" width="6" height="6" stroke-width="2"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/>
+          </svg>
         </div>
         <div>
-          <h2 class="text-sm font-semibold text-white flex items-center gap-2">
-            Konfigurasi Pin Hardware ESP32 Sesuai Kode Arduino
-            <span class="text-[10px] bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded font-mono">100% Sinkron</span>
+          <h2 id="hw-heading" class="text-xs font-semibold text-slate-200 flex items-center gap-2">
+            Pemetaan Pin ESP32 Sinkron dengan Firmware Arduino
+            <span class="text-[10px] bg-teal-900/40 text-teal-300 border border-teal-800 px-1.5 py-0.2 rounded font-mono">100% Cocok</span>
           </h2>
-          <p class="text-xs text-slate-400 mt-0.5">
-            Suhu Panas: <span class="text-amber-400 font-mono font-semibold">MAX6675 (SCK:18, CS:5, SO:19)</span> &nbsp;|&nbsp; 
-            Suhu Dingin: <span class="text-cyan-400 font-mono font-semibold">DS18B20 (Pin 14)</span> &nbsp;|&nbsp; 
-            Sensor Listrik: <span class="text-emerald-400 font-mono font-semibold">INA219 (I2C: SDA 21, SCL 22)</span>
+          <p class="text-[11px] text-slate-400 mt-0.5">
+            Suhu Panas: <strong class="text-amber-400 font-mono font-medium">MAX6675 (18, 5, 19)</strong> &bull; 
+            Suhu Dingin: <strong class="text-sky-400 font-mono font-medium">DS18B20 (Pin 14)</strong> &bull; 
+            Sensor Listrik: <strong class="text-emerald-400 font-mono font-medium">INA219 (I2C: 21, 22)</strong>
           </p>
         </div>
       </div>
-      <button onclick="togglePinModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg text-xs font-medium transition flex items-center gap-1.5 shrink-0">
-        <i class="fa-solid fa-diagram-project text-indigo-400"></i>
-        <span>Diagram Pin Lengkap</span>
+
+      <button id="btnOpenPinModal" class="px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition-colors duration-150 flex items-center gap-1.5 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400">
+        <svg class="w-3.5 h-3.5 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+        <span>Lihat Diagram Pin</span>
       </button>
+    </section>
+
+    <!-- ======================================================= -->
+    <!-- 4. ASYMMETRICAL KPI METRIC ARCHITECTURE (AntiSlopUI) -->
+    <!-- ======================================================= -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+      <!-- HERO PRIMARY KPI: TEG ELECTRICAL POWER YIELD (5 cols on lg) -->
+      <section aria-label="Metrik Daya Utama" class="lg:col-span-5 bg-slate-900 border border-teal-800/60 rounded-lg p-5 flex flex-col justify-between relative overflow-hidden">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-semibold text-teal-400 uppercase tracking-wider font-mono">Daya Listrik Pemanenan (P)</span>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-teal-950 text-teal-300 border border-teal-800/80">Output Utama</span>
+          </div>
+          
+          <div class="flex items-baseline gap-2">
+            <span id="valPower" class="text-4xl lg:text-5xl font-display font-bold text-white tabular-nums">0.000</span>
+            <span class="text-xl font-display font-medium text-teal-400">mW</span>
+          </div>
+
+          <div class="mt-2 text-xs text-slate-400 flex items-center gap-2">
+            <span>Konversi Watt:</span>
+            <span id="valPowerW" class="font-mono text-slate-200 font-semibold tabular-nums">0.000000 W</span>
+          </div>
+        </div>
+
+        <!-- Seebeck Electrical Yield Meter -->
+        <div class="mt-5 pt-4 border-t border-slate-800">
+          <div class="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+            <span>Efisiensi Seebeck Generator</span>
+            <span id="txtEfficiencyStatus" class="font-mono text-teal-400 font-semibold">Menunggu Data</span>
+          </div>
+          <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+            <div id="barEfficiency" class="bg-teal-600 h-full w-0 transition-all duration-300"></div>
+          </div>
+          <div class="flex justify-between text-[10px] font-mono text-slate-500 mt-1">
+            <span>0 mW</span>
+            <span>Est. Nominal 50 mW</span>
+            <span>Peak 100+ mW</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- THERMAL GRADIENT COMPARATIVE PANEL (4 cols on lg) -->
+      <section aria-label="Gradien Termal" class="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-lg p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider font-mono">Diferensial Termal (&Delta;T)</span>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">Seebeck Drive</span>
+          </div>
+
+          <div class="flex items-baseline gap-2">
+            <span id="valDeltaT" class="text-4xl lg:text-5xl font-display font-bold text-amber-400 tabular-nums">0.00</span>
+            <span class="text-xl font-display font-medium text-amber-500">&deg;C</span>
+          </div>
+        </div>
+
+        <!-- Side-by-Side Dual Probes -->
+        <div class="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-slate-800 text-xs">
+          <div class="bg-slate-950 p-2.5 rounded-md border border-slate-800/80">
+            <div class="text-[11px] text-amber-400 font-medium flex items-center gap-1.5 mb-1">
+              <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+              <span>Sisi Panas (Thot)</span>
+            </div>
+            <div class="text-lg font-mono font-bold text-slate-100 tabular-nums">
+              <span id="valThot">0.00</span> <span class="text-xs font-sans text-slate-400">&deg;C</span>
+            </div>
+            <div class="text-[10px] text-slate-500 font-mono mt-0.5">MAX6675</div>
+          </div>
+
+          <div class="bg-slate-950 p-2.5 rounded-md border border-slate-800/80">
+            <div class="text-[11px] text-sky-400 font-medium flex items-center gap-1.5 mb-1">
+              <span class="w-2 h-2 rounded-full bg-sky-500"></span>
+              <span>Sisi Dingin (Tcold)</span>
+            </div>
+            <div class="text-lg font-mono font-bold text-slate-100 tabular-nums">
+              <span id="valTcold">0.00</span> <span class="text-xs font-sans text-slate-400">&deg;C</span>
+            </div>
+            <div class="text-[10px] text-slate-500 font-mono mt-0.5">DS18B20</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ELECTRICAL V-I CHARACTERISTICS (3 cols on lg) -->
+      <section aria-label="Metrik Listrik" class="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
+        <!-- Tegangan TEG -->
+        <div class="bg-slate-900 border border-slate-800 rounded-lg p-4 flex flex-col justify-between">
+          <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+            <span class="font-mono font-medium">Tegangan (V)</span>
+            <span class="text-[10px] text-amber-500 font-mono">INA219 VIN+</span>
+          </div>
+          <div class="flex items-baseline gap-1.5">
+            <span id="valVoltage" class="text-2xl lg:text-3xl font-display font-bold text-amber-300 tabular-nums">0.000</span>
+            <span class="text-sm font-display text-slate-400">V</span>
+          </div>
+          <div class="text-[11px] text-slate-400 font-mono mt-1">
+            <span id="valVoltageMV">0 mV</span>
+          </div>
+        </div>
+
+        <!-- Arus Listrik TEG -->
+        <div class="bg-slate-900 border border-slate-800 rounded-lg p-4 flex flex-col justify-between">
+          <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+            <span class="font-mono font-medium">Arus Listrik (I)</span>
+            <span class="text-[10px] text-teal-400 font-mono">Amperemeter</span>
+          </div>
+          <div class="flex items-baseline gap-1.5">
+            <span id="valCurrent" class="text-2xl lg:text-3xl font-display font-bold text-teal-300 tabular-nums">0.000</span>
+            <span class="text-sm font-display text-slate-400">mA</span>
+          </div>
+          <div class="text-[11px] text-slate-400 font-mono mt-1">
+            <span id="valCurrentA">0.000000 A</span>
+          </div>
+        </div>
+      </section>
+
     </div>
 
     <!-- ======================================================= -->
-    <!-- KPI METRIC CARDS GRID -->
+    <!-- 5. ANALYTICAL REAL-TIME TIME-SERIES CHARTS -->
     <!-- ======================================================= -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-      <!-- 1. Suhu Panas (MAX6675) -->
-      <div class="glass-card p-4 relative overflow-hidden group hover:border-amber-500/50 transition">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Suhu Panas (Thot)</span>
-          <span class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center text-xs">
-            <i class="fa-solid fa-fire"></i>
-          </span>
-        </div>
-        <div class="flex items-baseline gap-1 mt-1">
-          <span id="valThot" class="text-3xl font-bold font-mono text-amber-400">0.00</span>
-          <span class="text-sm font-semibold text-slate-400">°C</span>
-        </div>
-        <div class="mt-3 flex items-center justify-between text-[11px] text-slate-400">
-          <span>MAX6675</span>
-          <span class="text-amber-400/90 font-mono">GPIO 18, 5, 19</span>
-        </div>
-      </div>
-
-      <!-- 2. Suhu Dingin (DS18B20) -->
-      <div class="glass-card p-4 relative overflow-hidden group hover:border-cyan-500/50 transition">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Suhu Dingin (Tcold)</span>
-          <span class="w-7 h-7 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-xs">
-            <i class="fa-solid fa-snowflake"></i>
-          </span>
-        </div>
-        <div class="flex items-baseline gap-1 mt-1">
-          <span id="valTcold" class="text-3xl font-bold font-mono text-cyan-400">0.00</span>
-          <span class="text-sm font-semibold text-slate-400">°C</span>
-        </div>
-        <div class="mt-3 flex items-center justify-between text-[11px] text-slate-400">
-          <span>DS18B20</span>
-          <span class="text-cyan-400/90 font-mono">GPIO 14</span>
-        </div>
-      </div>
-
-      <!-- 3. Delta T (Thot - Tcold) -->
-      <div class="glass-card p-4 relative overflow-hidden group hover:border-orange-500/50 transition">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Delta Suhu (&Delta;T)</span>
-          <span class="w-7 h-7 rounded-lg bg-orange-500/10 text-orange-400 flex items-center justify-center text-xs">
-            <i class="fa-solid fa-temperature-arrow-up"></i>
-          </span>
-        </div>
-        <div class="flex items-baseline gap-1 mt-1">
-          <span id="valDeltaT" class="text-3xl font-bold font-mono text-orange-400">0.00</span>
-          <span class="text-sm font-semibold text-slate-400">°C</span>
-        </div>
-        <div class="mt-3 flex items-center justify-between text-[11px] text-slate-400">
-          <span>Gradient</span>
-          <span id="deltaRate" class="text-orange-400 font-mono">Thot - Tcold</span>
-        </div>
-      </div>
-
-      <!-- 4. Tegangan TEG (V) -->
-      <div class="glass-card p-4 relative overflow-hidden group hover:border-yellow-500/50 transition">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tegangan (V)</span>
-          <span class="w-7 h-7 rounded-lg bg-yellow-500/10 text-yellow-400 flex items-center justify-center text-xs">
-            <i class="fa-solid fa-battery-half"></i>
-          </span>
-        </div>
-        <div class="flex items-baseline gap-1 mt-1">
-          <span id="valVoltage" class="text-3xl font-bold font-mono text-yellow-400">0.000</span>
-          <span class="text-sm font-semibold text-slate-400">V</span>
-        </div>
-        <div class="mt-3 flex items-center justify-between text-[11px] text-slate-400">
-          <span>INA219 VIN+</span>
-          <span id="valVoltageMV" class="text-yellow-400/90 font-mono">0 mV</span>
-        </div>
-      </div>
-
-      <!-- 5. Arus TEG (mA) -->
-      <div class="glass-card p-4 relative overflow-hidden group hover:border-purple-500/50 transition">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Arus (I)</span>
-          <span class="w-7 h-7 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center text-xs">
-            <i class="fa-solid fa-wave-square"></i>
-          </span>
-        </div>
-        <div class="flex items-baseline gap-1 mt-1">
-          <span id="valCurrent" class="text-3xl font-bold font-mono text-purple-400">0.000</span>
-          <span class="text-sm font-semibold text-slate-400">mA</span>
-        </div>
-        <div class="mt-3 flex items-center justify-between text-[11px] text-slate-400">
-          <span>Amperemeter</span>
-          <span id="valCurrentA" class="text-purple-400/90 font-mono">0.000000 A</span>
-        </div>
-      </div>
-
-      <!-- 6. Daya Listrik TEG (mW) -->
-      <div class="glass-card p-4 relative overflow-hidden group hover:border-emerald-500/50 glow-green transition border border-emerald-500/30">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Daya TEG (P)</span>
-          <span class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs shadow">
-            <i class="fa-solid fa-plug-circle-bolt"></i>
-          </span>
-        </div>
-        <div class="flex items-baseline gap-1 mt-1">
-          <span id="valPower" class="text-3xl font-bold font-mono text-emerald-400">0.000</span>
-          <span class="text-sm font-semibold text-emerald-300">mW</span>
-        </div>
-        <div class="mt-3 flex items-center justify-between text-[11px] text-slate-400">
-          <span>Output Daya</span>
-          <span id="valPowerW" class="text-emerald-400 font-mono font-semibold">0.000000 W</span>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- ======================================================= -->
-    <!-- REAL-TIME CHARTS SECTION -->
-    <!-- ======================================================= -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-      <!-- Chart 1: Suhu Panas, Dingin & Delta T -->
-      <div class="glass-card p-5">
-        <div class="flex flex-wrap items-center justify-between mb-4 gap-2">
+      <!-- Chart 1: Temperature & Delta T Curves -->
+      <section aria-labelledby="chart1-heading" class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
           <div>
-            <h3 class="text-sm font-semibold text-white flex items-center gap-2">
-              <i class="fa-solid fa-chart-line text-amber-500"></i>
-              Profil Suhu & Delta T (°C)
+            <h3 id="chart1-heading" class="text-sm font-display font-bold text-slate-100">
+              Dinamika Termal & Selisih Suhu (&deg;C)
             </h3>
-            <p class="text-xs text-slate-400">Suhu Panas, Dingin, dan Selisih Temperatur</p>
+            <p class="text-xs text-slate-400">Perbandingan profil sisi panas, dingin, dan gradient &Delta;T</p>
           </div>
-          <div class="flex items-center gap-2 text-xs">
-            <span class="inline-flex items-center gap-1.5 text-amber-400"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>Thot</span>
-            <span class="inline-flex items-center gap-1.5 text-cyan-400"><span class="w-2.5 h-2.5 rounded-full bg-cyan-500"></span>Tcold</span>
-            <span class="inline-flex items-center gap-1.5 text-orange-400"><span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>&Delta;T</span>
+          <div class="flex items-center gap-3 text-xs font-mono">
+            <span class="inline-flex items-center gap-1.5 text-amber-400"><span class="w-2.5 h-0.5 bg-amber-400"></span>Thot</span>
+            <span class="inline-flex items-center gap-1.5 text-sky-400"><span class="w-2.5 h-0.5 bg-sky-400"></span>Tcold</span>
+            <span class="inline-flex items-center gap-1.5 text-orange-400"><span class="w-2.5 h-0.5 bg-orange-400 border-b border-dashed"></span>&Delta;T</span>
           </div>
         </div>
         <div class="h-64 relative">
-          <canvas id="tempChart"></canvas>
+          <canvas id="tempChart" aria-label="Grafik suhu terhadap waktu" role="img"></canvas>
         </div>
-      </div>
+      </section>
 
-      <!-- Chart 2: Karakteristik Listrik (Tegangan & Arus) -->
-      <div class="glass-card p-5">
-        <div class="flex flex-wrap items-center justify-between mb-4 gap-2">
+      <!-- Chart 2: Electrical Characteristics (V & I) -->
+      <section aria-labelledby="chart2-heading" class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
           <div>
-            <h3 class="text-sm font-semibold text-white flex items-center gap-2">
-              <i class="fa-solid fa-chart-line text-emerald-400"></i>
-              Tegangan (V) & Arus (mA)
+            <h3 id="chart2-heading" class="text-sm font-display font-bold text-slate-100">
+              Karakteristik Listrik Tegangan & Arus
             </h3>
-            <p class="text-xs text-slate-400">Respons output listrik sensor INA219</p>
+            <p class="text-xs text-slate-400">Sensor INA219 kalibrasi presisi 16V 400mA</p>
           </div>
-          <div class="flex items-center gap-2 text-xs">
-            <span class="inline-flex items-center gap-1.5 text-yellow-400"><span class="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>Tegangan (V)</span>
-            <span class="inline-flex items-center gap-1.5 text-purple-400"><span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>Arus (mA)</span>
+          <div class="flex items-center gap-3 text-xs font-mono">
+            <span class="inline-flex items-center gap-1.5 text-amber-300"><span class="w-2.5 h-0.5 bg-amber-300"></span>Tegangan (V)</span>
+            <span class="inline-flex items-center gap-1.5 text-teal-300"><span class="w-2.5 h-0.5 bg-teal-300"></span>Arus (mA)</span>
           </div>
         </div>
         <div class="h-64 relative">
-          <canvas id="elecChart"></canvas>
+          <canvas id="elecChart" aria-label="Grafik tegangan dan arus listrik terhadap waktu" role="img"></canvas>
         </div>
-      </div>
+      </section>
 
-      <!-- Chart 3: Daya Listrik TEG (mW) - Full Width -->
-      <div class="glass-card p-5 lg:col-span-2">
-        <div class="flex flex-wrap items-center justify-between mb-4 gap-2">
+      <!-- Chart 3: Power Curve (Full Width) -->
+      <section aria-labelledby="chart3-heading" class="bg-slate-900 border border-slate-800 rounded-lg p-4 lg:col-span-2">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
           <div>
-            <h3 class="text-sm font-semibold text-white flex items-center gap-2">
-              <i class="fa-solid fa-bolt text-emerald-400"></i>
+            <h3 id="chart3-heading" class="text-sm font-display font-bold text-slate-100">
               Kurva Pemanenan Daya Listrik TEG (mW)
             </h3>
-            <p class="text-xs text-slate-400">P = V &times; I sebanding dengan gradient suhu &Delta;T</p>
+            <p class="text-xs text-slate-400">Daya output P = V &times; I sebanding dengan gradient suhu &Delta;T</p>
           </div>
-          <div class="flex items-center gap-3 text-xs">
-            <span class="text-slate-400 font-mono">Poin Data: <span id="dataCount" class="text-emerald-400 font-bold">0</span></span>
-            <button id="btnClearData" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition">
+          <div class="flex items-center gap-3 text-xs font-mono">
+            <span class="text-slate-400">Sampel: <strong id="dataCount" class="text-teal-400">0</strong></span>
+            <button id="btnClearData" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition-colors duration-150">
               Reset Grafik
             </button>
           </div>
         </div>
-        <div class="h-64 relative">
-          <canvas id="powerChart"></canvas>
+        <div class="h-60 relative">
+          <canvas id="powerChart" aria-label="Grafik daya listrik terhadap waktu" role="img"></canvas>
         </div>
-      </div>
+      </section>
 
     </div>
 
     <!-- ======================================================= -->
-    <!-- TELEMETRY LOG TABLE -->
+    <!-- 6. TELEMETRY LOG DATA TABLE -->
     <!-- ======================================================= -->
-    <div class="glass-card p-5">
-      <div class="flex flex-wrap items-center justify-between mb-4 gap-2">
+    <section aria-labelledby="log-heading" class="bg-slate-900 border border-slate-800 rounded-lg p-4">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div>
-          <h3 class="text-sm font-semibold text-white flex items-center gap-2">
-            <i class="fa-solid fa-list-check text-indigo-400"></i>
-            Tabel Riwayat Telemetri Data
+          <h3 id="log-heading" class="text-sm font-display font-bold text-slate-100">
+            Log Telemetri Real-Time
           </h3>
-          <p class="text-xs text-slate-400">Perekaman log data real-time untuk analisis termoelektrik</p>
+          <p class="text-xs text-slate-400">Perekaman 15 sampel data terakhir yang diterima dari ESP32</p>
         </div>
-        <div class="text-xs text-slate-400">
-          Pembaruan Terakhir: <span id="lastUpdate" class="font-mono text-slate-200">-</span>
+        <div class="text-xs text-slate-400 font-mono">
+          Update: <span id="lastUpdate" class="text-slate-200">-</span>
         </div>
       </div>
 
-      <div class="overflow-x-auto custom-scroll max-h-72 border border-slate-800 rounded-lg">
+      <div class="overflow-x-auto custom-scroll border border-slate-800 rounded-md">
         <table class="w-full text-xs text-left border-collapse">
-          <thead class="bg-slate-900/90 sticky top-0 text-slate-400 font-medium border-b border-slate-800">
+          <thead class="bg-slate-950 text-slate-400 font-medium border-b border-slate-800">
             <tr>
-              <th class="py-2.5 px-3">Waktu</th>
-              <th class="py-2.5 px-3">Thot (°C)</th>
-              <th class="py-2.5 px-3">Tcold (°C)</th>
-              <th class="py-2.5 px-3">&Delta;T (°C)</th>
-              <th class="py-2.5 px-3">Tegangan (V)</th>
-              <th class="py-2.5 px-3">Arus (mA)</th>
-              <th class="py-2.5 px-3">Daya (mW)</th>
-              <th class="py-2.5 px-3">Daya (W)</th>
+              <th scope="col" class="py-2 px-3">Waktu</th>
+              <th scope="col" class="py-2 px-3">Thot (&deg;C)</th>
+              <th scope="col" class="py-2 px-3">Tcold (&deg;C)</th>
+              <th scope="col" class="py-2 px-3">&Delta;T (&deg;C)</th>
+              <th scope="col" class="py-2 px-3">Tegangan (V)</th>
+              <th scope="col" class="py-2 px-3">Arus (mA)</th>
+              <th scope="col" class="py-2 px-3">Daya (mW)</th>
+              <th scope="col" class="py-2 px-3">Daya (W)</th>
             </tr>
           </thead>
           <tbody id="telemetryTableBody" class="divide-y divide-slate-800 font-mono text-slate-300">
             <tr>
-              <td colspan="8" class="text-center py-6 text-slate-500">Menunggu data telemetri pertama dari ESP32...</td>
+              <td colspan="8" class="text-center py-6 text-slate-500">Menunggu paket data telemetri pertama dari ESP32...</td>
             </tr>
           </tbody>
         </table>
       </div>
-    </div>
+    </section>
 
   </main>
 
   <!-- ======================================================= -->
-  <!-- PIN CONFIGURATION MODAL -->
+  <!-- 7. FOOTER -->
   <!-- ======================================================= -->
-  <div id="pinModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="glass-card max-w-2xl w-full p-6 border border-slate-700 bg-slate-900 shadow-2xl relative">
-      <button onclick="togglePinModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
+  <footer class="border-t border-slate-800 bg-slate-900/60 px-4 py-4 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 font-mono text-[11px]">
+      <span>Rice-TEG IoT Monitor &middot; Sistem Pemanenan Energi Termoelektrik</span>
+      <span>Arsitektur: ESP32 + MAX6675 + DS18B20 + INA219 &rarr; MQTT HiveMQ</span>
+    </div>
+  </footer>
 
-      <div class="flex items-center gap-3 mb-4">
-        <div class="w-10 h-10 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-lg">
-          <i class="fa-solid fa-microchip"></i>
+  <!-- ======================================================= -->
+  <!-- 8. ACCESSIBLE HARDWARE PINOUT DIALOG (<dialog>) -->
+  <!-- ======================================================= -->
+  <dialog id="pinDialog" class="bg-slate-900 text-slate-200 border border-slate-700 rounded-lg max-w-xl w-full p-6 shadow-2xl focus:outline-none">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded bg-teal-900/60 border border-teal-700 flex items-center justify-center text-teal-300">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <rect x="4" y="4" width="16" height="16" rx="2" stroke-width="2"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9h6v6H9z"/>
+          </svg>
         </div>
         <div>
-          <h3 class="text-base font-bold text-white">Panduan Wiring & Pinout ESP32</h3>
-          <p class="text-xs text-slate-400">Disesuaikan 100% dengan sketch Arduino <code class="text-emerald-400">monitoring_rice_teg_mqtt.ino</code></p>
+          <h3 class="font-display font-bold text-sm text-white">Panduan Pinout & Wiring Hardware ESP32</h3>
+          <p class="text-[11px] text-slate-400">Sinkron dengan sketch <code class="text-teal-300">monitoring_rice_teg_mqtt.ino</code></p>
+        </div>
+      </div>
+      <button id="btnClosePinModal" class="text-slate-400 hover:text-white p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400" aria-label="Tutup Dialog">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="mt-4 space-y-3.5 text-xs">
+      <!-- MAX6675 -->
+      <div class="p-3 bg-slate-950 rounded-md border border-amber-900/40">
+        <div class="font-semibold text-amber-400 text-xs mb-1.5 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-amber-500"></span> 1. Sensor Sisi Panas (MAX6675 Thermocouple K)
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-[11px]">
+          <div class="bg-slate-900 p-1.5 rounded border border-slate-800">SCK: <strong class="text-amber-300">GPIO 18</strong></div>
+          <div class="bg-slate-900 p-1.5 rounded border border-slate-800">CS: <strong class="text-amber-300">GPIO 5</strong></div>
+          <div class="bg-slate-900 p-1.5 rounded border border-slate-800">SO: <strong class="text-amber-300">GPIO 19</strong></div>
+          <div class="bg-slate-900 p-1.5 rounded border border-slate-800">Power: <strong class="text-slate-300">3.3V / GND</strong></div>
         </div>
       </div>
 
-      <div class="space-y-4 text-xs">
-        <!-- MAX6675 -->
-        <div class="p-3 rounded-lg bg-slate-950/60 border border-amber-500/20">
-          <div class="font-semibold text-amber-400 text-sm mb-1 flex items-center gap-1.5">
-            <i class="fa-solid fa-fire"></i> 1. Sensor Suhu Panas (MAX6675 Thermocouple K)
-          </div>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono mt-2">
-            <div class="bg-slate-900 p-2 rounded border border-slate-800">SCK: <span class="text-amber-300 font-bold">GPIO 18</span></div>
-            <div class="bg-slate-900 p-2 rounded border border-slate-800">CS: <span class="text-amber-300 font-bold">GPIO 5</span></div>
-            <div class="bg-slate-900 p-2 rounded border border-slate-800">SO: <span class="text-amber-300 font-bold">GPIO 19</span></div>
-            <div class="bg-slate-900 p-2 rounded border border-slate-800">VCC/GND: <span class="text-slate-300 font-bold">3.3V / GND</span></div>
-          </div>
+      <!-- DS18B20 -->
+      <div class="p-3 bg-slate-950 rounded-md border border-sky-900/40">
+        <div class="font-semibold text-sky-400 text-xs mb-1.5 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-sky-500"></span> 2. Sensor Sisi Dingin (DS18B20 OneWire)
         </div>
-
-        <!-- DS18B20 -->
-        <div class="p-3 rounded-lg bg-slate-950/60 border border-cyan-500/20">
-          <div class="font-semibold text-cyan-400 text-sm mb-1 flex items-center gap-1.5">
-            <i class="fa-solid fa-snowflake"></i> 2. Sensor Suhu Dingin (DS18B20 Waterproof)
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono mt-2">
-            <div class="bg-slate-900 p-2 rounded border border-slate-800">Data (Kuning): <span class="text-cyan-300 font-bold">GPIO 14</span></div>
-            <div class="bg-slate-900 p-2 rounded border border-slate-800">Pull-up: <span class="text-slate-300 font-bold">Resistor 4.7k&Omega; (Data &rarr; 3.3V)</span></div>
-            <div class="bg-slate-900 p-2 rounded border border-slate-800">VCC/GND: <span class="text-slate-300 font-bold">3.3V / GND</span></div>
-          </div>
-        </div>
-
-        <!-- INA219 -->
-        <div class="p-3 rounded-lg bg-slate-950/60 border border-emerald-500/20">
-          <div class="font-semibold text-emerald-400 text-sm mb-1 flex items-center gap-1.5">
-            <i class="fa-solid fa-bolt"></i> 3. Sensor Listrik (INA219 I2C Tegangan & Arus)
-          </div>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono mt-2">
-            <div class="bg-slate-900 p-2 rounded border border-slate-800">SDA: <span class="text-emerald-300 font-bold">GPIO 21</span></div>
-            <div class="bg-slate-900 p-2 rounded border border-slate-800">SCL: <span class="text-emerald-300 font-bold">GPIO 22</span></div>
-            <div class="bg-slate-900 p-2 rounded border border-slate-800">I2C Addr: <span class="text-slate-300 font-bold">0x40</span></div>
-            <div class="bg-slate-900 p-2 rounded border border-slate-800">Kalibrasi: <span class="text-slate-300 font-bold">16V 400mA</span></div>
-          </div>
-          <p class="text-[11px] text-slate-400 mt-2">
-            <i class="fa-solid fa-circle-info text-emerald-400"></i> Sambungkan <strong>VIN+</strong> ke kutub positif modul TEG, dan <strong>VIN-</strong> ke beban/load positif.
-          </p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono text-[11px]">
+          <div class="bg-slate-900 p-1.5 rounded border border-slate-800">Data (Kuning): <strong class="text-sky-300">GPIO 14</strong></div>
+          <div class="bg-slate-900 p-1.5 rounded border border-slate-800">Pull-up: <strong class="text-slate-300">Resistor 4.7k&Omega;</strong></div>
+          <div class="bg-slate-900 p-1.5 rounded border border-slate-800">Power: <strong class="text-slate-300">3.3V / GND</strong></div>
         </div>
       </div>
 
-      <div class="mt-6 flex justify-end">
-        <button onclick="togglePinModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-semibold transition">
-          Tutup
-        </button>
+      <!-- INA219 -->
+      <div class="p-3 bg-slate-950 rounded-md border border-teal-900/40">
+        <div class="font-semibold text-teal-400 text-xs mb-1.5 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-teal-500"></span> 3. Sensor Listrik (INA219 I2C Tegangan & Arus)
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-[11px]">
+          <div class="bg-slate-900 p-1.5 rounded border border-slate-800">SDA: <strong class="text-teal-300">GPIO 21</strong></div>
+          <div class="bg-slate-900 p-1.5 rounded border border-slate-800">SCL: <strong class="text-teal-300">GPIO 22</strong></div>
+          <div class="bg-slate-900 p-1.5 rounded border border-slate-800">Alamat: <strong class="text-slate-300">0x40</strong></div>
+          <div class="bg-slate-900 p-1.5 rounded border border-slate-800">Kalibrasi: <strong class="text-slate-300">16V 400mA</strong></div>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-2">
+          &bull; Hubungkan <strong>VIN+</strong> ke terminal positif TEG, dan <strong>VIN-</strong> ke terminal positif beban.
+        </p>
       </div>
     </div>
-  </div>
+
+    <div class="mt-5 flex justify-end">
+      <button id="btnConfirmClosePinModal" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs font-semibold transition-colors duration-150">
+        Tutup
+      </button>
+    </div>
+  </dialog>
 
   <!-- ======================================================= -->
-  <!-- JAVASCRIPT: MQTT & CHART ENGINE -->
+  <!-- 9. JAVASCRIPT: PWA REGISTRATION, MQTT ENGINE & CHART -->
   <!-- ======================================================= -->
   <script>
-    // Data Storage
-    const MAX_POINTS = 30;
-    const historyData = [];
+    // ---------------------------------------------------------
+    // A. PWA SERVICE WORKER REGISTRATION & INSTALL PROMPT
+    // ---------------------------------------------------------
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => console.log('[PWA] Service Worker terdaftar dengan scope:', reg.scope))
+          .catch((err) => console.warn('[PWA] Service Worker gagal didaftarkan:', err));
+      });
+    }
 
-    // Elements
-    const statusBadge = document.getElementById('statusBadge');
-    const statusDot = document.getElementById('statusDot');
-    const statusText = document.getElementById('statusText');
-    const configDrawer = document.getElementById('configDrawer');
-    const btnToggleConfig = document.getElementById('btnToggleConfig');
-    const btnApplyConfig = document.getElementById('btnApplyConfig');
-    const btnExportCSV = document.getElementById('btnExportCSV');
-    const btnClearData = document.getElementById('btnClearData');
-    const dataCountEl = document.getElementById('dataCount');
-    const lastUpdateEl = document.getElementById('lastUpdate');
+    let deferredPrompt = null;
+    const btnInstallPWA = document.getElementById('btnInstallPWA');
 
-    // Telemetry display values
-    const valThot = document.getElementById('valThot');
-    const valTcold = document.getElementById('valTcold');
-    const valDeltaT = document.getElementById('valDeltaT');
-    const valVoltage = document.getElementById('valVoltage');
-    const valVoltageMV = document.getElementById('valVoltageMV');
-    const valCurrent = document.getElementById('valCurrent');
-    const valCurrentA = document.getElementById('valCurrentA');
-    const valPower = document.getElementById('valPower');
-    const valPowerW = document.getElementById('valPowerW');
-    const telemetryTableBody = document.getElementById('telemetryTableBody');
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (btnInstallPWA) {
+        btnInstallPWA.classList.remove('hidden');
+      }
+    });
 
-    // Toggle Modal
-    function togglePinModal() {
-      const modal = document.getElementById('pinModal');
-      modal.classList.toggle('hidden');
+    if (btnInstallPWA) {
+      btnInstallPWA.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log('[PWA] User response:', outcome);
+        deferredPrompt = null;
+        btnInstallPWA.classList.add('hidden');
+      });
+    }
+
+    window.addEventListener('appinstalled', () => {
+      console.log('[PWA] Aplikasi berhasil dipasang!');
+      if (btnInstallPWA) btnInstallPWA.classList.add('hidden');
+    });
+
+    // Offline / Online Status Handler
+    const offlineBanner = document.getElementById('offlineBanner');
+    window.addEventListener('offline', () => {
+      if (offlineBanner) offlineBanner.classList.remove('hidden');
+      setStatus('error', 'Offline');
+    });
+    window.addEventListener('online', () => {
+      if (offlineBanner) offlineBanner.classList.add('hidden');
+      connectMQTT();
+    });
+
+    // ---------------------------------------------------------
+    // B. DIALOG HANDLERS
+    // ---------------------------------------------------------
+    const pinDialog = document.getElementById('pinDialog');
+    const btnOpenPinModal = document.getElementById('btnOpenPinModal');
+    const btnClosePinModal = document.getElementById('btnClosePinModal');
+    const btnConfirmClosePinModal = document.getElementById('btnConfirmClosePinModal');
+
+    if (btnOpenPinModal && pinDialog) {
+      btnOpenPinModal.addEventListener('click', () => pinDialog.showModal());
+      btnClosePinModal.addEventListener('click', () => pinDialog.close());
+      btnConfirmClosePinModal.addEventListener('click', () => pinDialog.close());
+      pinDialog.addEventListener('click', (e) => {
+        const rect = pinDialog.getBoundingClientRect();
+        const isInDialog = (rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
+                            rect.left <= e.clientX && e.clientX <= rect.left + rect.width);
+        if (!isInDialog) pinDialog.close();
+      });
     }
 
     // Toggle Config Drawer
-    btnToggleConfig.addEventListener('click', () => {
-      configDrawer.classList.toggle('hidden');
-    });
+    const btnToggleConfig = document.getElementById('btnToggleConfig');
+    const configDrawer = document.getElementById('configDrawer');
+    if (btnToggleConfig && configDrawer) {
+      btnToggleConfig.addEventListener('click', () => {
+        configDrawer.classList.toggle('hidden');
+      });
+    }
 
-    // Chart.js Setup
+    // ---------------------------------------------------------
+    // C. CHART.JS REAL-TIME TELEMETRY ENGINE
+    // ---------------------------------------------------------
+    const MAX_POINTS = 30;
+    const historyData = [];
+
     const chartDefaultOptions = {
       responsive: true,
       maintainAspectRatio: false,
-      animation: { duration: 300 },
+      animation: { duration: 0 }, // Reduced motion instant rendering
       scales: {
         x: {
-          grid: { color: 'rgba(255, 255, 255, 0.05)' },
-          ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 10 } }
+          grid: { color: 'rgba(255, 255, 255, 0.04)' },
+          ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 } }
         },
         y: {
-          grid: { color: 'rgba(255, 255, 255, 0.05)' },
-          ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 10 } }
+          grid: { color: 'rgba(255, 255, 255, 0.04)' },
+          ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 } }
         }
       },
       plugins: {
@@ -558,30 +655,27 @@
           {
             label: 'Thot (°C)',
             borderColor: '#f59e0b',
-            backgroundColor: 'rgba(245, 158, 11, 0.1)',
             data: [],
             borderWidth: 2,
-            tension: 0.3,
-            fill: false
+            pointRadius: 0,
+            tension: 0.2
           },
           {
             label: 'Tcold (°C)',
-            borderColor: '#06b6d4',
-            backgroundColor: 'rgba(6, 182, 212, 0.1)',
+            borderColor: '#38bdf8',
             data: [],
             borderWidth: 2,
-            tension: 0.3,
-            fill: false
+            pointRadius: 0,
+            tension: 0.2
           },
           {
             label: 'Delta T (°C)',
-            borderColor: '#f97316',
-            backgroundColor: 'rgba(249, 115, 22, 0.1)',
+            borderColor: '#ea580c',
+            borderDash: [3, 3],
             data: [],
-            borderWidth: 2,
-            borderDash: [4, 4],
-            tension: 0.3,
-            fill: false
+            borderWidth: 1.8,
+            pointRadius: 0,
+            tension: 0.2
           }
         ]
       },
@@ -598,20 +692,20 @@
           {
             label: 'Tegangan (V)',
             yAxisID: 'yV',
-            borderColor: '#eab308',
-            backgroundColor: 'rgba(234, 179, 8, 0.1)',
+            borderColor: '#fde047',
             data: [],
             borderWidth: 2,
-            tension: 0.3
+            pointRadius: 0,
+            tension: 0.2
           },
           {
             label: 'Arus (mA)',
             yAxisID: 'yI',
-            borderColor: '#a855f7',
-            backgroundColor: 'rgba(168, 85, 247, 0.1)',
+            borderColor: '#2dd4bf',
             data: [],
             borderWidth: 2,
-            tension: 0.3
+            pointRadius: 0,
+            tension: 0.2
           }
         ]
       },
@@ -622,16 +716,14 @@
           yV: {
             type: 'linear',
             position: 'left',
-            title: { display: true, text: 'Tegangan (V)', color: '#eab308' },
-            grid: { color: 'rgba(255, 255, 255, 0.05)' },
-            ticks: { color: '#eab308', font: { family: 'JetBrains Mono', size: 10 } }
+            grid: { color: 'rgba(255, 255, 255, 0.04)' },
+            ticks: { color: '#fde047', font: { family: 'JetBrains Mono', size: 10 } }
           },
           yI: {
             type: 'linear',
             position: 'right',
-            title: { display: true, text: 'Arus (mA)', color: '#a855f7' },
             grid: { drawOnChartArea: false },
-            ticks: { color: '#a855f7', font: { family: 'JetBrains Mono', size: 10 } }
+            ticks: { color: '#2dd4bf', font: { family: 'JetBrains Mono', size: 10 } }
           }
         }
       }
@@ -646,99 +738,115 @@
         datasets: [
           {
             label: 'Daya TEG (mW)',
-            borderColor: '#10b981',
-            backgroundColor: 'rgba(16, 185, 129, 0.15)',
-            data: [],
-            borderWidth: 2.5,
+            borderColor: '#0d9488',
+            backgroundColor: 'rgba(13, 148, 136, 0.12)',
             fill: true,
-            tension: 0.3
+            data: [],
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.2
           }
         ]
       },
       options: chartDefaultOptions
     });
 
-    // =======================================================
-    // MQTT CLIENT
-    // =======================================================
+    // ---------------------------------------------------------
+    // D. MQTT TELEMETRY CLIENT & STATE HANDLER
+    // ---------------------------------------------------------
     let mqttClient = null;
+    const statusBadge = document.getElementById('statusBadge');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+
+    const valThot = document.getElementById('valThot');
+    const valTcold = document.getElementById('valTcold');
+    const valDeltaT = document.getElementById('valDeltaT');
+    const valVoltage = document.getElementById('valVoltage');
+    const valVoltageMV = document.getElementById('valVoltageMV');
+    const valCurrent = document.getElementById('valCurrent');
+    const valCurrentA = document.getElementById('valCurrentA');
+    const valPower = document.getElementById('valPower');
+    const valPowerW = document.getElementById('valPowerW');
+    const lastUpdateEl = document.getElementById('lastUpdate');
+    const dataCountEl = document.getElementById('dataCount');
+    const telemetryTableBody = document.getElementById('telemetryTableBody');
+    const barEfficiency = document.getElementById('barEfficiency');
+    const txtEfficiencyStatus = document.getElementById('txtEfficiencyStatus');
 
     function setStatus(status, text) {
+      if (!statusText || !statusDot || !statusBadge) return;
       statusText.innerText = text;
-      statusDot.className = 'w-2.5 h-2.5 rounded-full';
+      statusDot.className = 'w-2 h-2 rounded-full';
       if (status === 'connected') {
-        statusDot.classList.add('bg-emerald-500');
-        statusBadge.className = 'flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-500/40 text-xs text-emerald-300';
+        statusDot.classList.add('bg-teal-400');
+        statusBadge.className = 'flex items-center gap-2 px-3 py-1.5 rounded-md bg-teal-950/70 border border-teal-700/60 text-xs font-mono text-teal-300';
       } else if (status === 'connecting') {
-        statusDot.classList.add('bg-amber-500', 'pulse-indicator');
-        statusBadge.className = 'flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-950/40 border border-amber-500/40 text-xs text-amber-300';
+        statusDot.classList.add('bg-amber-400');
+        statusBadge.className = 'flex items-center gap-2 px-3 py-1.5 rounded-md bg-amber-950/70 border border-amber-700/60 text-xs font-mono text-amber-300';
       } else {
-        statusDot.classList.add('bg-rose-500');
-        statusBadge.className = 'flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-950/40 border border-rose-500/40 text-xs text-rose-300';
+        statusDot.classList.add('bg-rose-400');
+        statusBadge.className = 'flex items-center gap-2 px-3 py-1.5 rounded-md bg-rose-950/70 border border-rose-700/60 text-xs font-mono text-rose-300';
       }
     }
 
     function connectMQTT(customPort = null) {
       const host = document.getElementById('cfgHost').value.trim();
       let port = customPort || parseInt(document.getElementById('cfgPort').value.trim());
-      
-      // Jika diakses via HTTPS (online hosting), wajib port 8884 WSS
+
+      // Otomatis sesuaikan port SSL saat running di hosting online HTTPS (GitHub Pages/Vercel)
       if (!customPort && location.protocol === 'https:' && port === 8000) {
         port = 8884;
       }
 
       const topic = document.getElementById('cfgTopic').value.trim();
-      const clientId = 'WebDashboard_RiceTEG_' + Math.random().toString(16).substring(2, 8);
+      const clientId = 'RiceTEG_PWA_' + Math.random().toString(16).substring(2, 8);
 
       if (mqttClient && mqttClient.isConnected()) {
-        try {
-          mqttClient.disconnect();
-        } catch(e) {}
+        try { mqttClient.disconnect(); } catch(e) {}
       }
 
       const useSSL = (location.protocol === 'https:' || port === 8884);
-      setStatus('connecting', `Menghubungkan ke ${host}:${port} (${useSSL ? 'SSL' : 'WS'})...`);
+      setStatus('connecting', `Menghubungkan ke ${host}:${port}...`);
 
       mqttClient = new Paho.MQTT.Client(host, port, "/mqtt", clientId);
 
       mqttClient.onConnectionLost = (responseObject) => {
         if (responseObject.errorCode !== 0) {
-          console.error("Koneksi MQTT Terputus:", responseObject.errorMessage);
-          setStatus('error', 'Koneksi Terputus. Menghubungkan ulang...');
+          console.warn('[MQTT] Koneksi terputus:', responseObject.errorMessage);
+          setStatus('error', 'Koneksi Terputus');
           setTimeout(() => connectMQTT(), 4000);
         }
       };
 
       mqttClient.onMessageArrived = (message) => {
         try {
-          const payloadStr = message.payloadString;
-          const data = JSON.parse(payloadStr);
+          const data = JSON.parse(message.payloadString);
           processTelemetryData(data);
         } catch (err) {
-          console.warn("Format payload bukan JSON:", message.payloadString);
+          console.warn('[MQTT] Format pesan bukan JSON:', message.payloadString);
         }
       };
 
       const options = {
-        timeout: 5,
+        timeout: 6,
         useSSL: useSSL,
         onSuccess: () => {
           document.getElementById('cfgPort').value = port;
-          setStatus('connected', `Terhubung ke ${topic} (Port ${port})`);
-          console.log(`[MQTT] Terhubung. Subscribe topik: ${topic}`);
+          setStatus('connected', `Terhubung (${port})`);
+          console.log(`[MQTT] Berhasil terhubung ke ${topic}`);
           mqttClient.subscribe(topic);
         },
         onFailure: (err) => {
-          console.error("[MQTT Gagal]:", err);
-          // Jika port 8000 gagal, otomatis coba port 8884 (SSL), atau sebaliknya
+          console.error('[MQTT Gagal]:', err);
           if (port === 8000) {
-            console.log("Mencoba fallback ke port 8884 (SSL/TLS)...");
+            console.log('[MQTT] Mencoba fallback ke port 8884 (WSS)...');
             setTimeout(() => connectMQTT(8884), 1000);
           } else if (port === 8884 && location.protocol !== 'https:') {
-            console.log("Mencoba fallback ke port 8000 (WS)...");
+            console.log('[MQTT] Mencoba fallback ke port 8000 (WS)...');
             setTimeout(() => connectMQTT(8000), 1000);
           } else {
-            setStatus('error', `Gagal terhubung (${err.errorMessage || 'Timeout'}). Cek koneksi internet.`);
+            setStatus('error', 'Gagal Terhubung');
             setTimeout(() => connectMQTT(), 8000);
           }
         }
@@ -747,68 +855,16 @@
       try {
         mqttClient.connect(options);
       } catch (e) {
-        console.error("MQTT Exception:", e);
-        setStatus('error', 'Gagal inisialisasi koneksi MQTT.');
+        console.error('[MQTT Init Error]:', e);
+        setStatus('error', 'Init Error');
       }
     }
 
-    // =======================================================
-    // SIMULASI DATA (TESTING MODE)
-    // =======================================================
-    let simInterval = null;
-    const btnSimulate = document.getElementById('btnSimulate');
-    const txtSimulate = document.getElementById('txtSimulate');
-
-    btnSimulate.addEventListener('click', () => {
-      if (simInterval) {
-        clearInterval(simInterval);
-        simInterval = null;
-        btnSimulate.classList.remove('bg-rose-600', 'hover:bg-rose-500');
-        btnSimulate.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
-        btnSimulate.innerHTML = '<i class="fa-solid fa-play"></i><span>Test Simulasi</span>';
-      } else {
-        btnSimulate.classList.remove('bg-indigo-600', 'hover:bg-indigo-500');
-        btnSimulate.classList.add('bg-rose-600', 'hover:bg-rose-500');
-        btnSimulate.innerHTML = '<i class="fa-solid fa-stop"></i><span>Hentikan Simulasi</span>';
-
-        let baseHot = 78.5;
-        let baseCold = 29.2;
-        let simCount = 0;
-
-        const runSimStep = () => {
-          simCount++;
-          const tHot = +(baseHot + (Math.sin(simCount * 0.3) * 5) + (Math.random() * 0.8)).toFixed(2);
-          const tCold = +(baseCold + (Math.cos(simCount * 0.2) * 1.5) + (Math.random() * 0.4)).toFixed(2);
-          const deltaT = +(tHot - tCold).toFixed(2);
-          // TEG Seebeck: V sebanding dengan delta T
-          const volt = +(0.045 * deltaT + (Math.random() * 0.05)).toFixed(3);
-          // Arus ~ V / R
-          const curr = +(volt * 9.2 + (Math.random() * 0.5)).toFixed(3);
-          const pwr = +(volt * curr).toFixed(3);
-
-          processTelemetryData({
-            thot: tHot,
-            tcold: tCold,
-            delta_t: deltaT,
-            voltage: volt,
-            current: curr,
-            power: pwr,
-            power_w: +(pwr / 1000).toFixed(6),
-            current_a: +(curr / 1000).toFixed(6)
-          });
-        };
-
-        runSimStep();
-        simInterval = setInterval(runSimStep, 2000);
-      }
-    });
-
-    // Process Incoming Telemetry
+    // Process Incoming Telemetry Packet
     function processTelemetryData(data) {
       const now = new Date();
       const timeStr = now.toTimeString().split(' ')[0];
 
-      // Format Data (mendukung format JSON dari sketch Arduino)
       const thot = data.thot !== null && data.thot !== undefined ? parseFloat(data.thot) : 0;
       const tcold = data.tcold !== null && data.tcold !== undefined ? parseFloat(data.tcold) : 0;
       const deltaT = data.delta_t !== null && data.delta_t !== undefined ? parseFloat(data.delta_t) : (thot - tcold);
@@ -819,7 +875,7 @@
       const currentA = data.current_a !== undefined ? parseFloat(data.current_a) : (current / 1000.0);
       const powerW = data.power_w !== undefined ? parseFloat(data.power_w) : (power / 1000.0);
 
-      // Update Top KPI Cards
+      // Update KPI DOM Elements
       valThot.innerText = thot.toFixed(2);
       valTcold.innerText = tcold.toFixed(2);
       valDeltaT.innerText = deltaT.toFixed(2);
@@ -830,14 +886,28 @@
       valPower.innerText = power.toFixed(3);
       valPowerW.innerText = powerW.toFixed(6) + ' W';
 
-      lastUpdateEl.innerText = `${timeStr} (Baru saja)`;
+      lastUpdateEl.innerText = `${timeStr}`;
 
-      // Push to charts
+      // Update Efficiency Gauge (Nominal ~50mW, Max 100mW)
+      const effPercent = Math.min(Math.max((power / 50.0) * 100, 0), 100);
+      barEfficiency.style.width = effPercent + '%';
+      if (power <= 0.1) {
+        txtEfficiencyStatus.innerText = 'Daya Minimum (Tegangan Rendah)';
+        txtEfficiencyStatus.className = 'font-mono text-slate-400 font-semibold';
+      } else if (power < 20) {
+        txtEfficiencyStatus.innerText = 'Pemanenan Aktif (Rendah)';
+        txtEfficiencyStatus.className = 'font-mono text-amber-400 font-semibold';
+      } else {
+        txtEfficiencyStatus.innerText = 'Optimal Seebeck P = ' + power.toFixed(1) + ' mW';
+        txtEfficiencyStatus.className = 'font-mono text-teal-400 font-semibold';
+      }
+
+      // Append data points to charts
       appendChartPoint(tempChart, timeStr, [thot, tcold, deltaT]);
       appendChartPoint(elecChart, timeStr, [voltage, current]);
       appendChartPoint(powerChart, timeStr, [power]);
 
-      // Record to history and update table
+      // Record to history array
       const record = { timeStr, thot, tcold, deltaT, voltage, current, power, powerW };
       historyData.unshift(record);
       if (historyData.length > 100) historyData.pop();
@@ -856,7 +926,7 @@
         chart.data.labels.shift();
         chart.data.datasets.forEach(ds => ds.data.shift());
       }
-      chart.update('none'); // Update tanpa animasi berat agar mulus
+      chart.update('none'); // Instant zero-overhead update
     }
 
     function renderTable() {
@@ -864,22 +934,23 @@
       let html = '';
       historyData.slice(0, 15).forEach(row => {
         html += `
-          <tr class="hover:bg-slate-800/40 transition">
+          <tr class="hover:bg-slate-800/40 transition-colors duration-100">
             <td class="py-2 px-3 text-slate-400">${row.timeStr}</td>
             <td class="py-2 px-3 text-amber-400 font-semibold">${row.thot.toFixed(2)}</td>
-            <td class="py-2 px-3 text-cyan-400 font-semibold">${row.tcold.toFixed(2)}</td>
+            <td class="py-2 px-3 text-sky-400 font-semibold">${row.tcold.toFixed(2)}</td>
             <td class="py-2 px-3 text-orange-400 font-semibold">${row.deltaT.toFixed(2)}</td>
-            <td class="py-2 px-3 text-yellow-400">${row.voltage.toFixed(3)}</td>
-            <td class="py-2 px-3 text-purple-400">${row.current.toFixed(3)}</td>
-            <td class="py-2 px-3 text-emerald-400 font-semibold">${row.power.toFixed(3)}</td>
-            <td class="py-2 px-3 text-emerald-500">${row.powerW.toFixed(6)}</td>
+            <td class="py-2 px-3 text-amber-300">${row.voltage.toFixed(3)}</td>
+            <td class="py-2 px-3 text-teal-300">${row.current.toFixed(3)}</td>
+            <td class="py-2 px-3 text-teal-400 font-bold">${row.power.toFixed(3)}</td>
+            <td class="py-2 px-3 text-slate-400">${row.powerW.toFixed(6)}</td>
           </tr>
         `;
       });
       telemetryTableBody.innerHTML = html;
     }
 
-    // Export CSV
+    // Export Telemetry CSV
+    const btnExportCSV = document.getElementById('btnExportCSV');
     btnExportCSV.addEventListener('click', () => {
       if (historyData.length === 0) {
         alert("Belum ada data telemetri untuk diexport!");
@@ -901,11 +972,12 @@
     });
 
     // Reset Charts & Data
+    const btnClearData = document.getElementById('btnClearData');
     btnClearData.addEventListener('click', () => {
       [tempChart, elecChart, powerChart].forEach(c => {
         c.data.labels = [];
         c.data.datasets.forEach(ds => ds.data = []);
-        c.update();
+        c.update('none');
       });
       historyData.length = 0;
       dataCountEl.innerText = '0';
@@ -913,12 +985,64 @@
     });
 
     // Apply Config Button
+    const btnApplyConfig = document.getElementById('btnApplyConfig');
     btnApplyConfig.addEventListener('click', () => {
       connectMQTT();
       configDrawer.classList.add('hidden');
     });
 
-    // Start MQTT automatically on load
+    // ---------------------------------------------------------
+    // E. SIMULATION TESTING MODE
+    // ---------------------------------------------------------
+    let simInterval = null;
+    const btnSimulate = document.getElementById('btnSimulate');
+    const txtSimulate = document.getElementById('txtSimulate');
+
+    btnSimulate.addEventListener('click', () => {
+      if (simInterval) {
+        clearInterval(simInterval);
+        simInterval = null;
+        btnSimulate.classList.remove('bg-rose-800', 'border-rose-600', 'text-rose-200');
+        btnSimulate.classList.add('bg-slate-800', 'border-slate-700', 'text-slate-200');
+        txtSimulate.innerText = 'Uji Simulasi';
+      } else {
+        btnSimulate.classList.remove('bg-slate-800', 'border-slate-700', 'text-slate-200');
+        btnSimulate.classList.add('bg-rose-800', 'border-rose-600', 'text-rose-200');
+        txtSimulate.innerText = 'Stop Simulasi';
+
+        let baseHot = 76.2;
+        let baseCold = 28.5;
+        let step = 0;
+
+        const runStep = () => {
+          step++;
+          const tHot = +(baseHot + Math.sin(step * 0.25) * 6 + (Math.random() * 0.6)).toFixed(2);
+          const tCold = +(baseCold + Math.cos(step * 0.15) * 1.5 + (Math.random() * 0.3)).toFixed(2);
+          const deltaT = +(tHot - tCold).toFixed(2);
+          const volt = +(0.046 * deltaT + (Math.random() * 0.04)).toFixed(3);
+          const curr = +(volt * 9.5 + (Math.random() * 0.4)).toFixed(3);
+          const pwr = +(volt * curr).toFixed(3);
+
+          processTelemetryData({
+            thot: tHot,
+            tcold: tCold,
+            delta_t: deltaT,
+            voltage: volt,
+            current: curr,
+            power: pwr,
+            power_w: +(pwr / 1000).toFixed(6),
+            current_a: +(curr / 1000).toFixed(6)
+          });
+        };
+
+        runStep();
+        simInterval = setInterval(runStep, 2000);
+      }
+    });
+
+    // ---------------------------------------------------------
+    // INITIALIZATION
+    // ---------------------------------------------------------
     window.addEventListener('DOMContentLoaded', () => {
       if (location.protocol === 'https:') {
         document.getElementById('cfgPort').value = 8884;
