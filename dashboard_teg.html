@@ -1042,16 +1042,16 @@
       prevDeltaT = deltaT;
       prevPower = power;
 
-      deltaVolt.innerText = (dV >= 0 ? '+' : '') + dV.toFixed(2) + ' V';
-      deltaCurr.innerText = (dI >= 0 ? '+' : '') + dI.toFixed(0) + ' mA';
+      deltaVolt.innerText = (dV >= 0 ? '+' : '') + dV.toFixed(3) + ' V';
+      deltaCurr.innerText = (dI >= 0 ? '+' : '') + dI.toFixed(3) + ' mA';
       deltaTemp.innerText = (dT >= 0 ? '+' : '') + dT.toFixed(1) + ' °C';
-      deltaPower.innerText = (dP >= 0 ? '+' : '') + dP.toFixed(1) + ' mW';
+      deltaPower.innerText = (dP >= 0 ? '+' : '') + dP.toFixed(3) + ' mW';
 
-      // KPI Values
-      valVoltage.innerText = voltage.toFixed(2);
-      valCurrent.innerText = current.toFixed(0);
+      // KPI Values (Tampilkan 3 desimal agar nilai kecil seperti 0.100 mA terbaca presisi)
+      valVoltage.innerText = voltage.toFixed(3);
+      valCurrent.innerText = current.toFixed(3);
       valDeltaT.innerText = deltaT.toFixed(1);
-      valPower.innerText = power.toFixed(1);
+      valPower.innerText = power.toFixed(3);
 
       // Status Sistem
       valThot.innerText = thot.toFixed(1);
@@ -1067,11 +1067,11 @@
       valBattery.innerText = calcBat.toFixed(2);
 
       // Ringkasan Energi
-      valSummaryPower.innerText = power.toFixed(1);
+      valSummaryPower.innerText = power.toFixed(3);
       valSummaryDelta.innerText = deltaT.toFixed(1);
 
       // String Data Terakhir
-      txtLatestSummary.innerText = `${timeStr} | V: ${voltage.toFixed(2)} V | I: ${current.toFixed(0)} mA | P: ${power.toFixed(1)} mW`;
+      txtLatestSummary.innerText = `${timeStr} | V: ${voltage.toFixed(3)} V | I: ${current.toFixed(3)} mA | P: ${power.toFixed(3)} mW`;
 
       // Update Sparklines
       updateSpark(sparkVolt, voltage);
@@ -1110,9 +1110,9 @@
             <td class="py-2.5 px-3 text-red-400 font-semibold">${row.thot.toFixed(1)}</td>
             <td class="py-2.5 px-3 text-sky-400 font-semibold">${row.tcold.toFixed(1)}</td>
             <td class="py-2.5 px-3 text-amber-400 font-semibold">${row.deltaT.toFixed(1)}</td>
-            <td class="py-2.5 px-3 text-emerald-400 font-bold">${row.voltage.toFixed(2)}</td>
-            <td class="py-2.5 px-3 text-sky-300 font-bold">${row.current.toFixed(0)}</td>
-            <td class="py-2.5 px-3 text-emerald-300 font-bold">${row.power.toFixed(1)}</td>
+            <td class="py-2.5 px-3 text-emerald-400 font-bold">${row.voltage.toFixed(3)}</td>
+            <td class="py-2.5 px-3 text-sky-300 font-bold">${row.current.toFixed(3)}</td>
+            <td class="py-2.5 px-3 text-emerald-300 font-bold">${row.power.toFixed(3)}</td>
             <td class="py-2.5 px-3 text-slate-400">${row.powerW.toFixed(6)}</td>
           </tr>
         `;
