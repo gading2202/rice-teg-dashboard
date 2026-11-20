@@ -992,8 +992,9 @@
         onSuccess: () => {
           document.getElementById('cfgPort').value = port;
           setStatus('connected', 'Online');
-          console.log(`[MQTT] Terhubung ke topik: ${topic}`);
+          console.log(`[MQTT] Terhubung ke broker. Subscribe: ${topic}`);
           mqttClient.subscribe(topic);
+          mqttClient.subscribe("rice_teg/+/telemetry");
         },
         onFailure: (err) => {
           console.error('[MQTT Gagal]:', err);

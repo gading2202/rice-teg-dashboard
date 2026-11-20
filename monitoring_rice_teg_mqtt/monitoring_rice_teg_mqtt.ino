@@ -16,12 +16,10 @@ const char *ssid = "POCO X6 Pro 5G";
 const char *password = "imam2222";
 
 const char *mqtt_server = "broker.hivemq.com";
-const int mqtt_port =
-    1883; // MQTT biasa untuk ESP32 (8000 itu WebSocket untuk browser)
+const int mqtt_port = 1883;
 
-// Ganti GANTI_UNIK dengan teks acak buatanmu, dan samakan di kolom Topik di
-// HTML
-const char *mqtt_topic = "rice_teg/GANTI_UNIK/telemetry";
+// Topik telemetri MQTT (disamakan persis dengan web dashboard)
+const char *mqtt_topic = "rice_teg/kelompok/telemetry";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
