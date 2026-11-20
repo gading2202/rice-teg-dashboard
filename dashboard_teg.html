@@ -230,10 +230,10 @@
             <div>
               <span class="text-xs text-slate-400 font-medium">Tegangan Output</span>
               <div class="text-2xl md:text-3xl font-bold text-white tracking-tight mt-0.5">
-                <span id="valVoltage">1.93</span> <span class="text-lg font-semibold text-slate-300">V</span>
+                <span id="valVoltage">0.00</span> <span class="text-lg font-semibold text-slate-300">V</span>
               </div>
               <div class="text-xs text-emerald-400 font-medium mt-1 flex items-center gap-1">
-                <span id="deltaVoltIcon">&#9650;</span> <span id="deltaVolt">+0.02 V</span>
+                <span id="deltaVoltIcon">&bull;</span> <span id="deltaVolt">--</span>
               </div>
             </div>
           </div>
@@ -255,10 +255,10 @@
             <div>
               <span class="text-xs text-slate-400 font-medium">Arus Output</span>
               <div class="text-2xl md:text-3xl font-bold text-white tracking-tight mt-0.5">
-                <span id="valCurrent">73</span> <span class="text-lg font-semibold text-slate-300">mA</span>
+                <span id="valCurrent">0</span> <span class="text-lg font-semibold text-slate-300">mA</span>
               </div>
               <div class="text-xs text-emerald-400 font-medium mt-1 flex items-center gap-1">
-                <span id="deltaCurrIcon">&#9650;</span> <span id="deltaCurr">+1 mA</span>
+                <span id="deltaCurrIcon">&bull;</span> <span id="deltaCurr">--</span>
               </div>
             </div>
           </div>
@@ -280,10 +280,10 @@
             <div>
               <span class="text-xs text-slate-400 font-medium">&Delta;T Suhu</span>
               <div class="text-2xl md:text-3xl font-bold text-white tracking-tight mt-0.5">
-                <span id="valDeltaT">52.5</span> <span class="text-lg font-semibold text-slate-300">&deg;C</span>
+                <span id="valDeltaT">0.0</span> <span class="text-lg font-semibold text-slate-300">&deg;C</span>
               </div>
               <div class="text-xs text-amber-400 font-medium mt-1 flex items-center gap-1">
-                <span id="deltaTempIcon">&#9650;</span> <span id="deltaTemp">+0.3 &deg;C</span>
+                <span id="deltaTempIcon">&bull;</span> <span id="deltaTemp">--</span>
               </div>
             </div>
           </div>
@@ -305,10 +305,10 @@
             <div>
               <span class="text-xs text-slate-400 font-medium">Daya Output</span>
               <div class="text-2xl md:text-3xl font-bold text-white tracking-tight mt-0.5">
-                <span id="valPower">140.9</span> <span class="text-lg font-semibold text-slate-300">mW</span>
+                <span id="valPower">0.0</span> <span class="text-lg font-semibold text-slate-300">mW</span>
               </div>
               <div class="text-xs text-emerald-400 font-medium mt-1 flex items-center gap-1">
-                <span id="deltaPowerIcon">&#9650;</span> <span id="deltaPower">+2.1 mW</span>
+                <span id="deltaPowerIcon">&bull;</span> <span id="deltaPower">--</span>
               </div>
             </div>
           </div>
@@ -399,7 +399,7 @@
                   </svg>
                   <span class="text-slate-300">Suhu Hot Side</span>
                 </div>
-                <span class="font-bold text-white font-mono"><span id="valThot">84.5</span> &deg;C</span>
+                <span class="font-bold text-white font-mono"><span id="valThot">0.0</span> &deg;C</span>
               </div>
 
               <!-- Item 2: Suhu Cold Side -->
@@ -410,7 +410,7 @@
                   </svg>
                   <span class="text-slate-300">Suhu Cold Side</span>
                 </div>
-                <span class="font-bold text-white font-mono"><span id="valTcold">32.0</span> &deg;C</span>
+                <span class="font-bold text-white font-mono"><span id="valTcold">0.0</span> &deg;C</span>
               </div>
 
               <!-- Item 3: MPPT Efficiency -->
@@ -423,7 +423,7 @@
                   </svg>
                   <span class="text-slate-300">MPPT Efficiency</span>
                 </div>
-                <span class="font-bold text-white font-mono"><span id="valEfficiency">98.2</span> %</span>
+                <span class="font-bold text-white font-mono"><span id="valEfficiency">--</span> %</span>
               </div>
 
               <!-- Item 5: Baterai (Tegangan Bus) -->
@@ -435,7 +435,7 @@
                   </svg>
                   <span class="text-slate-300">Baterai</span>
                 </div>
-                <span class="font-bold text-white font-mono"><span id="valBattery">4.12</span> V</span>
+                <span class="font-bold text-white font-mono"><span id="valBattery">0.00</span> V</span>
               </div>
             </div>
           </div>
@@ -473,7 +473,7 @@
               <div>
                 <span class="text-xs text-slate-400">Energi Saat Ini</span>
                 <div class="text-xl font-bold text-white mt-0.5 font-mono">
-                  <span id="valSummaryPower">140.9</span> mW
+                  <span id="valSummaryPower">0.0</span> mW
                 </div>
               </div>
             </div>
@@ -490,7 +490,7 @@
               <div>
                 <span class="text-xs text-slate-400">Efisiensi MPPT</span>
                 <div class="text-xl font-bold text-white mt-0.5 font-mono">
-                  <span id="valSummaryEff">98.2</span> %
+                  <span id="valSummaryEff">--</span> %
                 </div>
               </div>
             </div>
@@ -504,7 +504,7 @@
               <div>
                 <span class="text-xs text-slate-400">&Delta;T Optimal</span>
                 <div class="text-xl font-bold text-white mt-0.5 font-mono">
-                  <span id="valSummaryDelta">52.5</span> &deg;C
+                  <span id="valSummaryDelta">0.0</span> &deg;C
                 </div>
               </div>
             </div>
@@ -530,7 +530,7 @@
           <!-- Summary Telemetry String -->
           <div class="bg-[#08100d] p-3.5 rounded-xl border border-[#182b24] font-mono text-xs text-slate-300 flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
-            <span id="txtLatestSummary">17:24:36 | V: 1.93 V | I: 73 mA | P: 140.9 mW</span>
+            <span id="txtLatestSummary">Menunggu data telemetri dari ESP32...</span>
           </div>
 
           <div class="mt-3 text-[11px] text-slate-500 font-mono flex items-center justify-between">
@@ -783,9 +783,9 @@
       return new Chart(ctx, {
         type: 'line',
         data: {
-          labels: Array(12).fill(''),
+          labels: [],
           datasets: [{
-            data: [1.88, 1.90, 1.89, 1.91, 1.92, 1.91, 1.90, 1.92, 1.91, 1.93, 1.92, 1.93],
+            data: [],
             borderColor: lineColor,
             borderWidth: 2,
             pointRadius: 0,
@@ -812,8 +812,10 @@
     const sparkPwr  = createSparkline('sparkPower', '#10b981');
 
     function updateSpark(chart, val) {
+      chart.data.labels.push('');
       chart.data.datasets[0].data.push(val);
       if (chart.data.datasets[0].data.length > 15) {
+        chart.data.labels.shift();
         chart.data.datasets[0].data.shift();
       }
       chart.update('none');
@@ -829,13 +831,13 @@
     const mainChart = new Chart(ctxMain, {
       type: 'line',
       data: {
-        labels: ['16:30', '16:45', '17:00', '17:15', '17:30'],
+        labels: [],
         datasets: [
           {
             label: 'Tegangan (V)',
             yAxisID: 'yV',
             borderColor: '#10b981',
-            data: [1.91, 1.92, 1.93, 1.92, 1.93],
+            data: [],
             borderWidth: 2.2,
             pointRadius: 0,
             tension: 0.35
@@ -844,7 +846,7 @@
             label: 'Arus (mA)',
             yAxisID: 'yI',
             borderColor: '#38bdf8',
-            data: [0.72, 0.73, 0.74, 0.73, 0.73],
+            data: [],
             borderWidth: 2.2,
             pointRadius: 0,
             tension: 0.35
@@ -853,7 +855,7 @@
             label: 'Daya (mW)',
             yAxisID: 'yP',
             borderColor: '#f59e0b',
-            data: [1.38, 1.40, 1.42, 1.39, 1.41],
+            data: [],
             borderWidth: 2.2,
             pointRadius: 0,
             tension: 0.35
@@ -904,10 +906,10 @@
     // E. MQTT CLIENT LOGIC
     // ---------------------------------------------------------
     let mqttClient = null;
-    let prevVoltage = 1.93;
-    let prevCurrent = 73;
-    let prevDeltaT = 52.5;
-    let prevPower = 140.9;
+    let prevVoltage = 0;
+    let prevCurrent = 0;
+    let prevDeltaT = 0;
+    let prevPower = 0;
 
     const valVoltage = document.getElementById('valVoltage');
     const valCurrent = document.getElementById('valCurrent');
